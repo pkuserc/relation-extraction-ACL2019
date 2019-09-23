@@ -21,7 +21,7 @@ The dataset we used in this paper is AEC2005 (English and Chinese corpus), which
 
 ## Requirements
 
-- Python(>=2.7)
+- Python(3.6)
 - Numpy(>=1.13.3)
 - Tensorflow (>=1.9)
 - Keras(>=2.1.1)
