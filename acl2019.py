@@ -1,7 +1,6 @@
 
 # coding: utf-8
 
-# In[4]:
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -48,14 +47,10 @@ from keras.engine.topology import Layer
 
 # ##### read data
 
-# In[2]:
-
 data = pd.read_csv('data_all_english.csv')
 
 
 # ##### data preprocessing
-
-# In[5]:
 
 data['between_docs'] = data['between_docs'].map(eval)
 data['docs_'] = data['docs_'].map(eval)
@@ -77,25 +72,16 @@ data['between_tag'] = data['between_tag'].apply(eval)
 data['tag_all_seq'] = pad_sequences(data['between_tag'], maxlen = 16, padding='post').tolist()
 
 
-# In[6]:
-
 data['relation'] = data['relation'].fillna('Other')
 label = list(data['relation'].unique())
 label.remove('Other')
 
 
-# In[7]:
-
 d2 = data[(data['relation'] != 'Other')|((data['relation'] == 'Other')&(data['entity_start_1'] < data['entity_start_2']))]
 data = d2.copy()
 
-
-# In[32]:
-
 data.index = range(data.shape[0])
 
-
-# In[9]:
 
 y = data['relation'].values
 
@@ -104,9 +90,6 @@ LB_y.fit(y)
 y = LB_y.transform(y)
 
 y = to_categorical(y, np.max(y) + 1)
-
-
-# In[10]:
 
 entity_start_1_in = []
 entity_start_2_in = []
@@ -139,15 +122,11 @@ for i in range(data.shape[0]):
         entity_end_1_in.extend([e1 - s2])
 
 
-# In[11]:
-
 data['entity_start_1_in'] = entity_start_1_in
 data['entity_start_2_in'] = entity_start_2_in
 data['entity_end_1_in'] = entity_end_1_in
 data['entity_end_2_in'] = entity_end_2_in
 
-
-# In[12]:
 
 max_len = 16
 
@@ -182,9 +161,6 @@ for i in range(data.shape[0]):
 data['entity_location_vector_1'] = entity_location_vector_1
 data['entity_location_vector_2'] = entity_location_vector_2
 
-
-# In[13]:
-
 def func(x):
     return x[:16]
 
@@ -192,14 +168,9 @@ data['entity_location_vector_1'] = data['entity_location_vector_1'].map(func)
 data['entity_location_vector_2'] = data['entity_location_vector_2'].map(func)
 data['tag_all_seq'] = data['tag_all_seq'].map(func)
 
-
-# In[14]:
-
 y_mask = [[1, 1] if x != 'Other' else [0,1] for x in data['relation'] ]
 y_mask = np.array(y_mask,dtype=np.float32)
 
-
-# In[15]:
 
 #define input function
 def get_input(X):
@@ -210,8 +181,6 @@ def get_input(X):
 
 
 # ##### define model
-
-# In[36]:
 
 def ranking_loss(y_true, y_pred):
     y_true_one_hot = y_true[:, :6]  # [batch_size * 10], one-hot, all zero for other
@@ -332,8 +301,6 @@ def MTL_model(cnn_filter_num = 64):
     return model
 
 
-# In[18]:
-
 y_binary = ['relation' if x != 'Other' else x for x in data['relation']]
 
 LB_y_binary = LabelEncoder()
@@ -345,8 +312,6 @@ y_binary = to_categorical(y_binary, 2)
 
 # ##### split dataset
 
-# In[19]:
-
 docs_id_list = list(data['docs_id'].unique())
 
 docs_id_list = list(data['docs_id'].unique())
@@ -354,113 +319,107 @@ docs_id_list = list(data['docs_id'].unique())
 folds = [docs_id_list[:107], docs_id_list[107:214], docs_id_list[214:321], docs_id_list[321:428], docs_id_list[428:]]
 
 
-# In[43]:
+# ##### train 3 times to reduce the randomness
 
-idx_train = np.array(data[~pd.DataFrame(data['docs_id'])['docs_id'].isin(docs_id_list[:107])].index)
-idx_val = np.array(data[pd.DataFrame(data['docs_id'])['docs_id'].isin(docs_id_list[:107])].index)
+acc_all =[]
+for n in range(3):
+    for i in range(5):
+        gc.collect()
+        K.clear_session()
+        print('*******%s*******'%n)
+        idx_train = np.array(data[~pd.DataFrame(data['docs_id'])['docs_id'].isin(folds[i])].index)
+        idx_val = np.array(data[pd.DataFrame(data['docs_id'])['docs_id'].isin(folds[i])].index)
+        
+        X_train = get_input(data.loc[idx_train, :])
+        y_train = y[idx_train]
+        
+        X_val = get_input(data.loc[idx_val, :])
+        y_val = y_binary[idx_val]
+        y_train_mask = y_mask[idx_train]
+        y_val_mask = y_mask[idx_val]
+        """
+        Process y
+        """
+        y_train_6 =  np.delete(y[idx_train], 3, axis = 1)
+        y_train_label_6 = []
+        for x in y_train_6:
+            if np.max(x) == 0:
+                y_train_label_6 .append(8888)
+            else:
+                y_train_label_6 .append(np.argmax(x))
+        y_train_label_6 = np.array(y_train_label_6)
+        y_train_label_6 = np.expand_dims(y_train_label_6, axis=-1)
+        y_train_ranking = np.concatenate([y_train_6, y_train_label_6, y_train_mask], axis=1)
 
+        y_val_6 =  np.delete(y[idx_val], 3, axis = 1)
+        y_val_label_6 = []
+        for x in y_val_6:
+            if np.max(x) == 0:
+                y_val_label_6 .append(8888)
+            else:
+                y_val_label_6 .append(np.argmax(x))
+        y_val_label_6 = np.array(y_val_label_6)
+        y_val_label_6 = np.expand_dims(y_val_label_6, axis=-1)
+        y_val_ranking = np.concatenate([y_val_6, y_val_label_6, y_val_mask], axis=1)
 
-# ##### train n times to reduce the randomness
+        bst_model_path =  str(i) + '_bestmodel.hdf5'
 
-# In[44]:
+        gc.collect()
+        K.clear_session()
 
-for n in range(5):
-    gc.collect()
-    K.clear_session()
-    print('*******%s*******'%n)
+        model = MTL_model()
+        model.compile(loss={'loss_1':ranking_loss, 'loss_2':'categorical_crossentropy'},
+            optimizer='RMSprop',
+            loss_weights={'loss_1':1, 'loss_2':1})
+            #metrics=[ranking_loss])
 
-    X_train = get_input(data.loc[idx_train, :])
-    y_train = y_binary[idx_train]
+        early_stopping = EarlyStopping(monitor='val_loss', patience=2, mode = 'min')
+        model_checkpoint = ModelCheckpoint(bst_model_path, monitor = 'val_loss', 
+             save_best_only=True, save_weights_only=True, verbose=1,  mode = 'min')
+        callbacks = [
+                    early_stopping,
+                    model_checkpoint
+                ]
 
-    X_val = get_input(data.loc[idx_val, :])
-    y_val = y_binary[idx_val]
-    y_train_mask = y_mask[idx_train]
-    y_val_mask = y_mask[idx_val]
-    """
-    Process y
-    """
-    y_train_6 =  np.delete(y[idx_train], 3, axis = 1)
-    y_train_label_6 = []
-    for x in y_train_6:
-        if np.max(x) == 0:
-            y_train_label_6 .append(8888)
-        else:
-            y_train_label_6 .append(np.argmax(x))
-    y_train_label_6 = np.array(y_train_label_6)
-    y_train_label_6 = np.expand_dims(y_train_label_6, axis=-1)
-    y_train_ranking = np.concatenate([y_train_6, y_train_label_6, y_train_mask], axis=1)
+        hist = model.fit(X_train, {'loss_1':y_train_ranking, 'loss_2':y_train},verbose=True,            validation_data=(X_val, {'loss_1':y_val_ranking, 'loss_2':y_val}),             epochs=50, batch_size=256, shuffle=True, callbacks=callbacks)#callbacks=callbacks, 
+    #             del model
 
-    y_val_6 =  np.delete(y[idx_val], 3, axis = 1)
-    y_val_label_6 = []
-    for x in y_val_6:
-        if np.max(x) == 0:
-            y_val_label_6 .append(8888)
-        else:
-            y_val_label_6 .append(np.argmax(x))
-    y_val_label_6 = np.array(y_val_label_6)
-    y_val_label_6 = np.expand_dims(y_val_label_6, axis=-1)
-    y_val_ranking = np.concatenate([y_val_6, y_val_label_6, y_val_mask], axis=1)
+        #  test for f1
+    #     p1 = model.predict(X_val)
+    #     p1 = pd.DataFrame(p1)
 
-    bst_model_path =  str(i) + '_bestmodel.hdf5'
+    #     result = pd.DataFrame(LB_y.inverse_transform(np.argmax(np.array(p1),axis = 1)))
+    #     true = pd.DataFrame(LB_y.inverse_transform(np.argmax(np.array(y_val),axis = 1)))
 
-    gc.collect()
-    K.clear_session()
+        label = list(data['relation'].unique())
+        label.remove('Other')
 
-    model = MTL_model()
-    model.compile(loss={'loss_1':ranking_loss, 'loss_2':'categorical_crossentropy'},
-        optimizer='RMSprop',
-        loss_weights={'loss_1':1, 'loss_2':1})
-        #metrics=[ranking_loss])
+    #         model = MTL_model()
+    #         model.load_weights(bst_model_path)
 
-    early_stopping = EarlyStopping(monitor='val_loss', patience=2, mode = 'min')
-    model_checkpoint = ModelCheckpoint(bst_model_path, monitor = 'val_loss', 
-         save_best_only=True, save_weights_only=True, verbose=1,  mode = 'min')
-    callbacks = [
-                early_stopping,
-                model_checkpoint
-            ]
+        model.load_weights(bst_model_path)
 
-    hist = model.fit(X_train, {'loss_1':y_train_ranking, 'loss_2':y_train},verbose=True,        validation_data=(X_val, {'loss_1':y_val_ranking, 'loss_2':y_val}),         epochs=50, batch_size=256, shuffle=True, callbacks=callbacks)#callbacks=callbacks, 
-#             del model
+        p1 = model.predict(X_val)[0]
 
-    #  test for f1
-#     p1 = model.predict(X_val)
-#     p1 = pd.DataFrame(p1)
+        true_p1 = np.insert(np.array(p1), 3, values=0.5, axis=1)
+        true_result = []
+        for x in true_p1:
+            max_score = np.max(x)
+            max_arg = np.argmax(x)
+            true_result.append(max_arg)
+        true_result =np.array(true_result)
 
-#     result = pd.DataFrame(LB_y.inverse_transform(np.argmax(np.array(p1),axis = 1)))
-#     true = pd.DataFrame(LB_y.inverse_transform(np.argmax(np.array(y_val),axis = 1)))
-
-    label = list(data['relation'].unique())
-    label.remove('Other')
-
-#         model = MTL_model()
-#         model.load_weights(bst_model_path)
-
-    model.load_weights(bst_model_path)
-
-    p1 = model.predict(X_val)[0]
-
-    true_p1 = np.insert(np.array(p1), 3, values=0.5, axis=1)
-    true_result = []
-    for x in true_p1:
-        max_score = np.max(x)
-        max_arg = np.argmax(x)
-        true_result.append(max_arg)
-    true_result =np.array(true_result)
-
-    true_true =np.array(np.argmax(y[idx_val], axis = 1))
+        true_true =np.array(np.argmax(y[idx_val], axis = 1))
 
 
-    result = pd.DataFrame(LB_y.inverse_transform(true_result))
-    true = pd.DataFrame(LB_y.inverse_transform(true_true))
+        result = pd.DataFrame(LB_y.inverse_transform(true_result))
+        true = pd.DataFrame(LB_y.inverse_transform(true_true))
 
-    f1_result = classification_report(list(true[0]),list(result[0]), labels = label, digits = 4)
-    print(f1_result)
+        f1_result = classification_report(list(true[0]),list(result[0]), labels = label, digits = 4)
+        print(f1_result)
 
-    gc.collect()
+        gc.collect()
 
-
-# In[ ]:
 
 
 
