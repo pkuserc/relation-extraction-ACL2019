@@ -1,4 +1,4 @@
-Official implementation of [Exploiting Entity BIO Tag Embeddings and Multi-task Learning for Relation Extraction with Imbalanced Data.](https://www.aclweb.org/anthology/P19-1130/).
+Official implementation of [Exploiting Entity BIO Tag Embeddings and Multi-task Learning for Relation Extraction with Imbalanced Data](https://www.aclweb.org/anthology/P19-1130/).
 
 Contributed by National Engineering Research Center for Software Engineering, Peking University.
 
@@ -6,10 +6,14 @@ Contributed by National Engineering Research Center for Software Engineering, Pe
 
 This is a TensorFlow-based framwork for Relation Extraction using BIO tag embeddings and multi-task learning, we use Keras to easily implement our methods. Our model has three parts:
 
-1. Input Layer:  1) Word Embeddings, 2) Positional Embeddings, 3) BIO tag Embeddings
-
-2. Convolutional Layer with Multi-Sized Window Kernels
-3. Multi-Task Layer: 1) Relation Identification with Cross-entropy Loss, 2) Relation Classification with Ranking Loss
+- 1. Input Layer:  
+	- 1) Word Embeddings
+	- 2) Positional Embeddings
+	- 3) BIO tag Embeddings
+- 2. Convolutional Layer with Multi-Sized Window Kernels
+- 3. Multi-Task Layer: 
+	- 1) Relation Identification with Cross-entropy Loss
+	- 2) Relation Classification with Ranking Loss
 
 ## Data Generation and Parameter Settings
 
