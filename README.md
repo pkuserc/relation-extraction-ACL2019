@@ -4,7 +4,7 @@ Contributed by National Engineering Research Center for Software Engineering, Pe
 
 ## Overview
 
-This is a TensorFlow-based framwork for Relation Extraction using BIO tag embeddings and multi-task learning, we use Keras to easily implement our methods. Our model has three parts:
+This is a TensorFlow-based framework for Relation Extraction using BIO tag embeddings and multi-task learning, we use Keras to easily implement our methods. Our model has three parts:
 
 - Input Layer:  
 	- Word Embeddings
@@ -17,7 +17,7 @@ This is a TensorFlow-based framwork for Relation Extraction using BIO tag embedd
 
 ## Data Generation and Parameter Settings
 
-The dataset we used in this paper is AEC2005 (English and Chinese corpus), which is a very popular dataset for relation extraction. The Data Preparation and Parameter Settings are mentioned in our paper, we will also release the processed data later to facilitate future research.
+The dataset we used in this paper is AEC2005 (English corpus and Chinese corpus), which is a very popular dataset for relation extraction. The Data Preparation and Parameter Settings are mentioned in our paper, we will also release the processed data later to facilitate future research.
 
 ## Requirements
 
